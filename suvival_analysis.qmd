@@ -1,0 +1,74 @@
+---
+title: "Survival Analysis"
+format: html
+---
+
+## Libraries
+```{r}
+library(tidyverse)
+library(readxl)
+library(survival)
+library(survminer)
+library(survivalAnalysis)
+```
+
+
+## Load Data
+```{r}
+cancer_data <- read_excel("cancer_data.xlsx", 
+    sheet = "1 Base Data All")
+```
+
+```{r}
+fir_rad_data <- 
+  cancer_data |>
+  mutate(
+    RACE = ifelse(RACE == "Unknown", "Other", RACE),
+    first_visit_to_radiotheraphy = round(difftime(RADIOTHERAPY_FIRST_DATE, IALCH_FIRST_VISIT_REG_DATE, units = "weeks")),
+    ISDEAD_FLAG = if_else(ISDEAD_FLAG == "y", 0, if_else(ISDEAD_FLAG == "n", 1, NA_real_)),
+    AGE = floor(time_length(interval(
+           DOB, IALCH_FIRST_VISIT_REG_DATE
+         ), unit = "year"))
+    ) 
+    
+  )
+
+
+surv_object <- Surv(
+  time = fir_rad_data$first_visit_to_radiotheraphy,
+  event = fir_rad_data$ISDEAD_FLAG)
+
+fit.coxph <- coxph(surv_object ~ RACE + GENDER, 
+                   data = fir_rad_data)
+
+fir_rad_data |> 
+  analyse_multivariate(vars(
+    first_visit_to_radiotheraphy,
+    ISDEAD_FLAG
+  ), vars(GENDER, RACE, AGE, CANCER_GROUP
+)) |> 
+  forest_plot(endpoint_labeller = c(first_visit_to_radiotheraphy = "Date of first visit\nto first day\nof radiotheraphy"))
+```
+
+
+
+## First to Radiotheraphy
+```{r}
+library(dplyr)
+
+fir_rad_data <- 
+  cancer_data |>
+  mutate(
+    censoring = ifelse(DOD < RADIOTHERAPY_FIRST_DATE, 1, 0),
+    first_visit_to_radiotheraphy = round(difftime(RADIOTHERAPY_FIRST_DATE, IALCH_FIRST_VISIT_REG_DATE, units = "weeks"))
+  ) 
+
+surv_object <- Surv(
+  time = fir_rad_data$first_visit_to_radiotheraphy,
+  event = fir_rad_data$censoring)
+
+fit.coxph <- coxph(surv_object ~ GENDER + RACE, 
+                   data = fir_rad_data)
+ggforest(fit.coxph, data = fir_rad_data)
+```
+

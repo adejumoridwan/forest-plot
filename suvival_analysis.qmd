@@ -26,16 +26,19 @@ cancer_data <- read_excel("cancer_data.xlsx",
       CANCER_GROUP == "Ca female genitalia" ~ "Female Genitalia",
       CANCER_GROUP == "Ca cervix" ~ "Cervix"
       ),
-    SURGERY_DATE = `Histopathology Surgical_First_Date
-    ) 
+    SURGERY_DATE = `Histopathology Surgical_First_Date`
+    ) |> 
+  filter(CANCER_GROUP != "Female Genitalia")
 ```
 
 ## Date of first visit to first day of radiotheraphy
 ```{r}
 fir_rad_data <- 
   cancer_data |>
+  filter(!is.na(RADIOTHERAPY_FIRST_DATE) &
+           !is.na(IALCH_FIRST_VISIT_REG_DATE)) |> 
   mutate(
-    first_visit_to_radiotheraphy = round(difftime(RADIOTHERAPY_FIRST_DATE, IALCH_FIRST_VISIT_REG_DATE, units = "weeks")),
+    first_visit_to_radiotheraphy = abs(round(difftime(RADIOTHERAPY_FIRST_DATE, IALCH_FIRST_VISIT_REG_DATE, units = "weeks"))),
     AGE = floor(time_length(interval(DOB, RADIOTHERAPY_FIRST_DATE), unit = "year")),
     AGE_GROUP = case_when(
       AGE <= 40 ~ "Less than 40",
@@ -66,10 +69,12 @@ fir_rad_data |>
 ```{r}
 fir_rad_data <- 
   cancer_data |>
+    filter(!is.na(CHEMOTHERAPY_FIRST_DATE) & 
+             !is.na(CA_FIRST_VISIT_START)) |> 
   mutate(
-    first_visit_to_radiotheraphy = round(difftime(CHEMOTHERAPY_FIRST_DATE
+    first_visit_to_radiotheraphy = abs(round(difftime(CHEMOTHERAPY_FIRST_DATE
 , CA_FIRST_VISIT_START
-, units = "weeks")),
+, units = "weeks"))),
     AGE = floor(time_length(interval(
            DOB, CHEMOTHERAPY_FIRST_DATE
 
@@ -104,10 +109,12 @@ fir_rad_data |>
 ```{r}
 fir_rad_data <- 
   cancer_data |>
+  filter(!is.na(CA_FIRST_VISIT_START) &
+           !is.na(SURGERY_DATE)) |> 
   mutate(
-    first_visit_to_radiotheraphy = round(
+    first_visit_to_radiotheraphy = abs(round(
       difftime(SURGERY_DATE, CA_FIRST_VISIT_START
-, units = "weeks")),
+, units = "weeks"))),
     AGE = floor(time_length(interval(
            DOB, SURGERY_DATE
 
@@ -135,15 +142,17 @@ fir_rad_data |>
     ISDEAD_FLAG
   ), vars(GENDER, RACE, AGE_GROUP, CANCER_GROUP
 )) |> 
-  forest_plot(endpoint_labeller = c(first_visit_to_radiotheraphy = "Date of surgery\nto CA first visit"))
+  forest_plot(endpoint_labeller = c(first_visit_to_radiotheraphy = "Date of surgery\nto cancer first visit"))
 ```
 ## Date of Surgery to Radiotheraphy
 ```{r}
 ```{r}
 fir_rad_data <- 
   cancer_data |>
+  filter(!is.na(RADIOTHERAPY_FIRST_DATE) &
+           !is.na(SURGERY_DATE)) |> 
   mutate(
-    first_visit_to_radiotheraphy = round(difftime(RADIOTHERAPY_FIRST_DATE, SURGERY_DATE, units = "weeks")),
+    first_visit_to_radiotheraphy = abs(round(difftime(RADIOTHERAPY_FIRST_DATE, SURGERY_DATE, units = "weeks"))),
     AGE = floor(time_length(interval(DOB, RADIOTHERAPY_FIRST_DATE), unit = "year")),
     AGE_GROUP = case_when(
       AGE <= 40 ~ "Less than 40",
